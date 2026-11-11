@@ -1,0 +1,212 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caviary</title>
+<style>
+:root{--green:#526f58;--pale:#eaf0e7;--cream:#faf8f1;--brown:#80634c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:#333;font-family:Arial,sans-serif}
+header{background:var(--green);color:white;text-align:center;padding:25px}
+header h1{font-family:Georgia,serif;letter-spacing:4px;margin:0;font-size:34px}
+header p{margin:8px 0 0}
+.stats{display:flex;justify-content:space-around;flex-wrap:wrap;padding:15px;background:#e1e9dc;font-size:14px;gap:12px}
+nav{display:flex;overflow-x:auto;background:white;position:sticky;top:0;z-index:2;border-bottom:1px solid #ddd}
+nav button{flex:1;min-width:75px;border:0;background:white;color:var(--green);padding:15px 8px;font-size:13px}
+nav button.active{background:var(--pale);font-weight:bold}
+main{max-width:950px;margin:auto;padding:18px}
+h2{color:var(--green)}
+.card{background:white;border:1px solid #e5e3d9;border-radius:12px;padding:16px;margin-bottom:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+button.action{background:var(--green);color:white;border:0;border-radius:7px;padding:11px 14px;margin:5px 3px 3px 0;cursor:pointer}
+button.secondary{background:var(--pale);color:var(--green)}
+input,select{padding:10px;border:1px solid #ccc;border-radius:7px;margin:5px 0;max-width:100%}
+label{display:block;margin-top:9px;font-size:14px}
+.pig{font-size:45px}
+.muted{color:#777;font-size:13px}
+.notice{padding:13px;background:#f1eddf;border-radius:9px;margin:12px 0}
+.bar{height:8px;background:#eee;border-radius:8px;overflow:hidden;margin:5px 0 10px}
+.fill{height:100%;background:#83a47a}
+footer{text-align:center;padding:25px;color:#888;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>🐹 CAVIARY</h1>
+<p>Your guinea pig breeding and caviary simulator</p>
+</header>
+<div class="stats">
+<span>💰 <b id="money">1000</b> tokens</span>
+<span>🐹 <b id="count">0</b> pigs</span>
+<span>📅 Day <b id="day">1</b></span>
+<span>⭐ <b id="rep">0</b> reputation</span>
+</div>
+<nav>
+<button class="active" onclick="go('home',this)">Home</button>
+<button onclick="go('pigs',this)">My pigs</button>
+<button onclick="go('breeding',this)">Breeding</button>
+<button onclick="go('housing',this)">Housing</button>
+<button onclick="go('market',this)">Market</button>
+</nav>
+<main id="content"></main>
+<footer>CAVIARY · Build your own little world 🐹</footer>
+<script>
+const KEY="caviary_game_v1";
+const fresh={money:1000,day:1,rep:0,next:1,pigs:[],cages:[{name:"Starter enclosure",capacity:2,clean:100}]};
+let game;
+try{game=JSON.parse(localStorage.getItem(KEY))||fresh}catch(e){game=fresh}
+let tab="home";
+const market=[
+{name:"Poppy",sex:"Female",coat:"Red self",type:"Self",price:180,age:120},
+{name:"Clover",sex:"Female",coat:"Black self",type:"Self",price:200,age:150},
+{name:"Rusty",sex:"Male",coat:"Red roan",type:"Roan",price:250,age:180},
+{name:"Domino",sex:"Male",coat:"Black Dalmatian",type:"Dalmatian",price:280,age:140},
+{name:"Hazel",sex:"Female",coat:"Chocolate and red",type:"Tortoiseshell",price:220,age:100},
+{name:"Snowdrop",sex:"Female",coat:"White self",type:"Self",price:170,age:90}
+];
+function save(){
+ localStorage.setItem(KEY,JSON.stringify(game));stats();
+}
+function stats(){
+ document.getElementById("money").textContent=game.money.toLocaleString();
+ document.getElementById("count").textContent=game.pigs.length;
+ document.getElementById("day").textContent=game.day;
+ document.getElementById("rep").textContent=game.rep;
+}
+function go(t,b){
+ tab=t;
+ document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+ if(b)b.classList.add("active");
+ render();
+}
+function render(){
+ stats();
+ let a=document.getElementById("content");
+ if(tab==="home"){
+ a.innerHTML=`
+ <h2>Welcome to your caviary!</h2>
+ <div class="notice">Start your journey, find your first guinea pigs and build your own breeding establishment.</div>
+ <div class="grid">
+ <div class="card"><h3>🐹 My herd</h3><p>You own ${game.pigs.length} guinea pigs.</p><button class="action" onclick="go('pigs')">View herd</button></div>
+ <div class="card"><h3>🛍️ Market</h3><p>Find your first guinea pigs.</p><button class="action" onclick="go('market')">Visit market</button></div>
+ <div class="card"><h3>🧬 Breeding</h3><p>Plan your breeding lines.</p><button class="action" onclick="go('breeding')">Breeding centre</button></div>
+ <div class="card"><h3>🏡 Housing</h3><p>Manage your enclosures.</p><button class="action" onclick="go('housing')">View housing</button></div>
+ </div>
+ <div class="card"><h3>📅 Daily management</h3><p>Care for your animals before advancing the day.</p><button class="action" onclick="advance()">Finish day →</button></div>
+ <div class="card"><h3>Daily overview</h3><p>Animals needing attention: ${game.pigs.filter(p=>p.hunger<50||p.thirst<50).length}</p><p>Pregnant guinea pigs: ${game.pigs.filter(p=>p.pregnant).length}</p></div>`;
+ }
+ if(tab==="pigs"){
+ a.innerHTML="<h2>🐹 My Guinea Pigs</h2>"+(game.pigs.length?'<div class="grid">'+game.pigs.map(p=>`
+ <div class="card"><div class="pig">🐹</div><h3>${p.name}</h3>
+ <p class="muted">${p.id} · ${p.sex} · ${p.coat}</p>
+ <p>${p.age} days old · ${p.type}</p>
+ <p>Health: ${p.health}%</p><div class="bar"><div class="fill" style="width:${p.health}%"></div></div>
+ <p>Hunger: ${p.hunger}% · Thirst: ${p.thirst}%</p>
+ <p>Happiness: ${p.happy}%</p>
+ ${p.pregnant?'<p>🤰 Pregnant · '+p.due+' days remaining</p>':''}
+ <button class="action secondary" onclick="care(${p.id},'feed')">Feed</button>
+ <button class="action secondary" onclick="care(${p.id},'water')">Water</button>
+ <button class="action secondary" onclick="care(${p.id},'play')">Enrichment</button>
+ <button class="action" onclick="profile(${p.id})">Full profile</button>
+ </div>`).join("")+"</div>":"<div class='card'>Your herd is empty. Visit the market to buy your first guinea pig!</div>");
+ }
+ if(tab==="market"){
+ a.innerHTML="<h2>🛍️ Guinea Pig Market</h2><p>Choose your new guinea pigs.</p><div class='grid'>"+market.map((p,i)=>`
+ <div class="card"><div class="pig">🐹</div><h3>${p.name}</h3>
+ <p>${p.sex} · ${p.coat}</p><p>${p.age} days old</p><b>${p.price} tokens</b><br>
+ <button class="action" onclick="buy(${i})">Purchase</button></div>`).join("")+"</div>";
+ }
+ if(tab==="housing"){
+ a.innerHTML="<h2>🏡 Housing</h2><p>Manage your caviary accommodation.</p>"+game.cages.map((c,i)=>`
+ <div class="card"><h3>${c.name}</h3><p>Capacity: ${c.capacity}</p><p>Cleanliness: ${c.clean}%</p>
+ <div class="bar"><div class="fill" style="width:${c.clean}%"></div></div>
+ <button class="action" onclick="clean(${i})">Clean enclosure</button></div>`).join("")+
+ `<div class="card"><h3>New enclosure</h3><p>Capacity 2 · 250 tokens</p><button class="action" onclick="newCage()">Purchase</button></div>`;
+ }
+ if(tab==="breeding"){
+ let females=game.pigs.filter(p=>p.sex==="Female"&&!p.pregnant&&p.age>=180&&p.health>=70);
+ let males=game.pigs.filter(p=>p.sex==="Male"&&p.age>=180&&p.health>=70);
+ a.innerHTML=`<h2>🧬 Breeding Centre</h2>
+ <div class="notice">Only breed healthy, mature and unrelated guinea pigs. This first version uses simplified coat inheritance and is not a substitute for a full genetic model.</div>
+ <div class="card"><h3>Plan a pairing</h3>
+ <label>Female</label><select id="female">${females.map(p=>`<option value="${p.id}">${p.name} · ${p.coat}</option>`).join("")}</select>
+ <label>Male</label><select id="male">${males.map(p=>`<option value="${p.id}">${p.name} · ${p.coat}</option>`).join("")}</select>
+ <button class="action" onclick="breed()">Confirm pairing</button>
+ <p class="muted">Adults are currently defined as 180 days or older. Pairings require both animals to be available.</p></div>
+ <h3>Pregnancy records</h3>
+ ${game.pigs.filter(p=>p.pregnant).map(p=>`<div class="card">${p.name} · ${p.due} days remaining</div>`).join("")||"No current pregnancies."}`;
+ }
+}
+function buy(i){
+ let p=market[i];
+ if(game.money<p.price)return alert("Not enough tokens!");
+ if(game.pigs.length>=game.cages.reduce((n,c)=>n+c.capacity,0))return alert("You need more suitable housing first!");
+ game.money-=p.price;
+ game.pigs.push({id:game.next++,name:p.name,sex:p.sex,coat:p.coat,type:p.type,age:p.age,health:100,hunger:100,thirst:100,happy:80,pregnant:false,due:0,mother:null,father:null});
+ save();render();alert(p.name+" has joined your caviary!");
+}
+function care(id,type){
+ let p=game.pigs.find(x=>x.id===id);
+ if(type==="feed")p.hunger=100;
+ if(type==="water")p.thirst=100;
+ if(type==="play")p.happy=Math.min(100,p.happy+25);
+ save();render();
+}
+function profile(id){
+ let p=game.pigs.find(x=>x.id===id);
+ alert("GUINEA PIG PROFILE\n\nName: "+p.name+"\nID: "+p.id+"\nSex: "+p.sex+"\nCoat: "+p.coat+"\nAge: "+p.age+" days\nHealth: "+p.health+"%\nMother: "+(p.mother||"Unknown")+"\nFather: "+(p.father||"Unknown"));
+}
+function clean(i){
+ game.cages[i].clean=100;save();render();
+}
+function newCage(){
+ if(game.money<250)return alert("Not enough tokens!");
+ game.money-=250;game.cages.push({name:"New enclosure "+(game.cages.length+1),capacity:2,clean:100});save();render();
+}
+function breed(){
+ let f=game.pigs.find(p=>p.id===Number(document.getElementById("female").value));
+ let m=game.pigs.find(p=>p.id===Number(document.getElementById("male").value));
+ if(!f||!m)return alert("You need an eligible female and male.");
+ if(f.id===m.id||f.sex!=="Female"||m.sex!=="Male")return alert("Invalid pairing.");
+ if(f.mother===m.id||f.father===m.id||m.mother===f.id||m.father===f.id)return alert("Parent and offspring pairings are not allowed.");
+ if(f.mother&&m.mother&&f.mother===m.mother)return alert("These guinea pigs share a mother.");
+ if(f.age<180||m.age<180||f.health<70||m.health<70)return alert("Both animals must be healthy adults.");
+ f.pregnant=true;f.due=68;f.father=m.id;
+ save();render();alert("Pairing recorded! Pregnancy has started in this game.");
+}
+function advance(){
+ game.day++;
+ game.pigs.forEach(p=>{
+ p.age++;p.hunger=Math.max(0,p.hunger-25);p.thirst=Math.max(0,p.thirst-30);
+ p.happy=Math.max(0,p.happy-5);
+ if(p.hunger===0||p.thirst===0)p.health=Math.max(0,p.health-10);
+ else if(p.hunger>50&&p.thirst>50)p.health=Math.min(100,p.health+2);
+ if(p.pregnant){
+ p.due--;
+ if(p.due<=0)birth(p);
+ }
+ });
+ game.cages.forEach(c=>c.clean=Math.max(0,c.clean-8));
+ save();render();
+ alert("Day "+game.day+" has begun. Check your animals' needs!");
+}
+function birth(mother){
+ mother.pregnant=false;mother.due=0;
+ let father=game.pigs.find(p=>p.id===mother.father);
+ let count=2+Math.floor(Math.random()*3);
+ let colours=[mother.coat,father?father.coat:mother.coat,"Red self","Black self"];
+ let available=game.cages.reduce((n,c)=>n+c.capacity,0)-game.pigs.length;
+ let born=Math.min(count,Math.max(0,available));
+ for(let i=0;i<born;i++){
+ let coat=colours[Math.floor(Math.random()*colours.length)];
+ game.pigs.push({id:game.next++,name:"Baby "+game.next,sex:Math.random()<.5?"Male":"Female",coat:coat,type:"Unknown",age:0,health:100,hunger:100,thirst:100,happy:90,pregnant:false,due:0,mother:mother.id,father:father?father.id:null});
+ }
+ game.rep+=5;
+ alert("A litter has arrived! "+born+" baby guinea pigs have been added. Make sure you have enough housing.");
+}
+render();
+</script>
+</body>
+</html>
